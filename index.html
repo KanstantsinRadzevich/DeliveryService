@@ -58,25 +58,27 @@
 
   <!-- Модальное окно для QR-кода -->
   <div class="modal fade" id="qrModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">QR-код подтверждения</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body text-center">
-          <div id="qrImage" class="qr-code"></div>
-          <p class="mt-2">Клиент должен отсканировать код, чтобы подтвердить получение.</p>
-          <p class="small text-break" id="qrLink"></p>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
-        </div>
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">QR-код подтверждения</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body text-center">
+        <div id="qrCodeContainer" class="qr-code"></div>  <!-- Здесь появится QR-код -->
+        <p class="mt-2">Клиент должен отсканировать код, чтобы подтвердить получение.</p>
+        <p class="small text-break" id="qrLink"></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
       </div>
     </div>
   </div>
+</div>
 
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script>
+    
     // Укажите URL вашего развернутого веб-приложения (без слеша в конце)
     const API_URL = 'https://script.google.com/macros/s/AKfycbyfPRijNUlmnlTFHZKGxClbBN_7d1ciI5iohs9AwOKcXNxZmfJBzTPdLT1-jmvetI4_/exec'; // ЗАМЕНИТЕ НА СВОЙ
 
@@ -179,18 +181,31 @@
     //   modal.show();
     // }
     function showQR(code, orderId) {
-      // Базовый URL вашего хостинга (где лежат HTML-файлы)
-      const BASE_URL = 'https://kanstantsinradzevich.github.io/DeliveryService';
-      const confirmUrl = `${BASE_URL}/confirm.html?code=${encodeURIComponent(code)}`;
-
-      const qrImageUrl = `https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl=${encodeURIComponent(confirmUrl)}&choe=UTF-8`;
-
-      document.getElementById('qrImage').innerHTML = `<img src="${qrImageUrl}" alt="QR-код" class="img-fluid">`;
-      document.getElementById('qrLink').innerText = confirmUrl;
-
-      const modal = new bootstrap.Modal(document.getElementById('qrModal'));
-      modal.show();
-    }
+    // Базовый URL вашего хостинга (замените на свой)
+    const BASE_URL = 'https://kanstantsinradzevich.github.io/DeliveryService';
+    const confirmUrl = `${BASE_URL}/confirm.html?code=${encodeURIComponent(code)}`;
+    
+    // Очищаем контейнер для QR-кода перед созданием нового
+    const qrContainer = document.getElementById('qrCodeContainer');
+    qrContainer.innerHTML = ''; // удаляем предыдущий QR-код, если был
+    
+    // Создаём новый QR-код
+    new QRCode(qrContainer, {
+        text: confirmUrl,
+        width: 200,
+        height: 200,
+        colorDark: "#000000",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.H // можно изменить уровень коррекции
+    });
+    
+    // Отображаем ссылку текстом (как было)
+    document.getElementById('qrLink').innerText = confirmUrl;
+    
+    // Показываем модальное окно
+    const modal = new bootstrap.Modal(document.getElementById('qrModal'));
+    modal.show();
+}
 
     function openSingleRoute(address) {
       if (!address) {
@@ -239,8 +254,10 @@
     };
   </script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+ 
 </body>
 
 
 </html>
+
 
