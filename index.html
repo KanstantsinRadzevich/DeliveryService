@@ -180,7 +180,7 @@
     // }
     function showQR(code, orderId) {
       // Базовый URL вашего хостинга (где лежат HTML-файлы)
-      const BASE_URL = 'https://kanstantsinradzevich.github.io/DeliveryService/';
+      const BASE_URL = 'https://kanstantsinradzevich.github.io/DeliveryService';
       const confirmUrl = `${BASE_URL}/confirm.html?code=${encodeURIComponent(code)}`;
 
       const qrImageUrl = `https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl=${encodeURIComponent(confirmUrl)}&choe=UTF-8`;
@@ -243,3 +243,4 @@
 
 
 </html>
+
