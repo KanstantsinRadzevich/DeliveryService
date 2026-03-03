@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    #map { height: 100vh; width: 100%; }
+    .route-info {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      right: 20px;
+      background: white;
+      padding: 15px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      z-index: 10;
+      max-height: 40vh;
+      overflow-y: auto;
+    }
+    .btn-back {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      z-index: 11;
+      background: white;
+      border: none;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      font-size: 20px;
+      line-height: 40px;
+      text-align: center;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="btn-back" onclick="window.location.href = window.location.pathname">←</div>
+  <div id="map"></div>
+  <div class="route-info" id="routeInfo">
+    <p class="mb-1">Загрузка маршрута...</p>
+  </div>
+
+  <script>
+    const courierName = localStorage.getItem('courierName');
+    
+    if (!courierName) {
+      document.getElementById('routeInfo').innerHTML = '<p class="text-danger">Имя курьера не найдено. Вернитесь на главную.</p>';
+    } else {
+      // Получаем API-ключ с сервера
+      google.script.run
+        .withSuccessHandler(initMapWithKey)
+        .withFailureHandler(showError)
+        .getMapsApiKey();
+    }
+    
+    function initMapWithKey(apiKey) {
+      if (!apiKey) {
+        document.getElementById('routeInfo').innerHTML = '<p class="text-danger">API-ключ не настроен. Обратитесь к администратору.</p>';
+        return;
+      }
+
+      // Загружаем адреса
+      google.script.run
+        .withSuccessHandler((addresses) => initMap(addresses, apiKey))
+        .withFailureHandler(showError)
+        .getAddressesForCourier(courierName);
+    }
+    
+    function initMap(addresses, apiKey) {
+      if (!addresses || addresses.length === 0) {
+        document.getElementById('routeInfo').innerHTML = '<p class="text-warning">Нет активных адресов для построения маршрута.</p>';
+        return;
+      }
+
+      // Динамически загружаем Google Maps API
+      const script = document.createElement('script');
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=initDirections`;
+      script.async = true;
+      script.defer = true;
+      document.head.appendChild(script);
+
+      window.initDirections = function() {
+        const map = new google.maps.Map(document.getElementById('map'), {
+          zoom: 10,
+          center: { lat: 55.7558, lng: 37.6173 } // Центр Москвы (можно заменить)
+        });
+
+        const directionsService = new google.maps.DirectionsService();
+        const directionsRenderer = new google.maps.DirectionsRenderer({
+          map: map,
+          panel: document.getElementById('routeInfo')
+        });
+
+        // Формируем запрос с оптимизацией
+        // Первый адрес – начальная точка, последний – конечная, остальные – промежуточные
+        const waypoints = addresses.slice(1, -1).map(addr => ({
+          location: addr,
+          stopover: true
+        }));
+
+        directionsService.route({
+          origin: addresses[0],
+          destination: addresses[addresses.length - 1],
+          waypoints: waypoints,
+          optimizeWaypoints: true,
+          travelMode: google.maps.TravelMode.DRIVING,
+          unitSystem: google.maps.UnitSystem.METRIC
+        }, (response, status) => {
+          if (status === 'OK') {
+            directionsRenderer.setDirections(response);
+
+            // Формируем информацию об оптимизированном порядке
+            const waypointOrder = response.routes[0].waypoint_order;
+            const orderedAddresses = [addresses[0]];
+            waypointOrder.forEach(index => {
+              orderedAddresses.push(addresses[index + 1]); // +1 из-за origin
+            });
+            orderedAddresses.push(addresses[addresses.length - 1]);
+
+            let infoHtml = '<h6>Оптимальный порядок:</h6><ol>';
+            orderedAddresses.forEach(addr => {
+              infoHtml += `<li>${addr}</li>`;
+            });
+            infoHtml += '</ol>';
+
+            const route = response.routes[0];
+            const totalDist = route.legs.reduce((sum, leg) => sum + leg.distance.value, 0) / 1000;
+            const totalTime = route.legs.reduce((sum, leg) => sum + leg.duration.value, 0) / 60;
+
+            infoHtml += `<p><strong>Общее расстояние:</strong> ${totalDist.toFixed(1)} км</p>`;
+            infoHtml += `<p><strong>Общее время:</strong> ${Math.round(totalTime)} мин</p>`;
+
+            document.getElementById('routeInfo').innerHTML = infoHtml;
+          } else {
+            document.getElementById('routeInfo').innerHTML = `<p class="text-danger">Не удалось построить маршрут: ${status}</p>`;
+          }
+        });
+      };
+    }
+
+    function showError(error) {
+      document.getElementById('routeInfo').innerHTML = `<p class="text-danger">Ошибка: ${error}</p>`;
+    }
+  </script>
+</body>
+</html>
